@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 require("dotenv").config();
 
@@ -74,8 +74,21 @@ async function run() {
     });
     // ------------------slider end-----------------
     // ------------------foods data ----------------
-     app.get("/foods", async (req, res) => {
+    app.get("/foods", async (req, res) => {
       const result = await foods.find().toArray();
+      res.send(result);
+    });
+    // find one item
+    app.get("/foods/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await foods.findOne(query);
+      res.send(result);
+    });
+    // ---------------new food
+    app.post("/foods", async (req, res) => {
+      const food = req.body;
+      const result = await foods.insertOne(food);
       res.send(result);
     });
 
