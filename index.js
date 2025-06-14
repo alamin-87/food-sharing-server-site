@@ -91,6 +91,25 @@ async function run() {
       const result = await foods.insertOne(food);
       res.send(result);
     });
+    // update tips data
+    app.put("/foods/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedFood = req.body;
+      const updateDoc = {
+        $set: updatedFood,
+      };
+      const result = await foods.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
+    // delete food data
+    app.delete("/foods/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await foods.deleteOne(query);
+      res.send(result);
+    });
 
     // ------------------foods data end------------
 
