@@ -36,6 +36,11 @@ async function run() {
     // ------------foods db
     const foods = client.db("foodSharing").collection("foods");
     // ----------------
+    // ------------request food db
+    const requestedFoods = client
+      .db("foodSharing")
+      .collection("requestedFoods");
+    // ----------------
 
     // --------users info-----
     //  user get data
@@ -110,8 +115,58 @@ async function run() {
       const result = await foods.deleteOne(query);
       res.send(result);
     });
-
     // ------------------foods data end------------
+    // GET all requested foods
+    app.get("/requestedFoods", async (req, res) => {
+      const result = await requestedFoods.find().toArray();
+      res.send(result);
+    });
+
+     // find one item
+    app.get("/requestedFoods/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await requestedFoods.findOne(query);
+      res.send(result);
+    });
+    // POST requested food with same _id as original food
+    app.post("/requestedFoods", async (req, res) => {
+      const foodData = req.body;
+
+      try {
+        // Ensure _id is ObjectId
+        foodData._id = new ObjectId(foodData._id);
+
+        // Check if already exists
+        const exists = await requestedFoods.findOne({ _id: foodData._id });
+        if (exists) {
+          return res.status(400).send({ message: "Already requested" });
+        }
+
+        const result = await requestedFoods.insertOne(foodData);
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "Insert failed", details: error.message });
+      }
+    });
+
+    // DELETE requested food by same _id
+    app.delete("/requestedFoods/:id", async (req, res) => {
+      const id = req.params.id;
+
+      try {
+        const result = await requestedFoods.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "Delete failed", details: error.message });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
