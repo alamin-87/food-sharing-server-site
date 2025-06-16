@@ -5,8 +5,42 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 require("dotenv").config();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
+
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebase-admin-token.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+// ✅ Middleware to verify token
+const verifyFirebaseToken = async (req, res, next) => {
+  const authHeader = req.headers?.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .send({ message: "Unauthorized access: Missing or malformed token" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.tokenEmail = decoded.email;
+    next();
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return res.status(401).send({ message: "Unauthorized: Invalid token" });
+  }
+};
 
 // mongodb connect-------------------
 
@@ -43,7 +77,7 @@ async function run() {
     // ----------------
 
     // --------users info-----
-    //  user get data
+    //  --------user get data
     app.get("/users", async (req, res) => {
       const email = req.query.email;
       if (!email) {
@@ -122,7 +156,7 @@ async function run() {
       res.send(result);
     });
 
-     // find one item
+    // find one item
     app.get("/requestedFoods/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
