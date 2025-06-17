@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 require("dotenv").config();
@@ -12,35 +14,55 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(cookieParser());
 
-const admin = require("firebase-admin");
-const serviceAccount = require("./firebase-admin-token.json");
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-// ✅ Middleware to verify token
-const verifyFirebaseToken = async (req, res, next) => {
-  const authHeader = req.headers?.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .send({ message: "Unauthorized access: Missing or malformed token" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  try {
-    const decoded = await admin.auth().verifyIdToken(token);
-    req.tokenEmail = decoded.email;
-    next();
-  } catch (error) {
-    console.error("Token verification failed:", error);
-    return res.status(401).send({ message: "Unauthorized: Invalid token" });
-  }
+const logger = (req, res, next) => {
+  console.log("inside the logger middleware");
+  next();
 };
+const verifyToken = (req, res, next) => {
+  const token = req?.cookies?.token;
+  console.log("cookie in the middleware", token);
+  if (!token) {
+    return res.status(401).send({ message: "unauthorize access" });
+  }
+  jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorize access" });
+    }
+    req.decoded = decoded;
+    console.log(decoded);
+    next();
+  });
+};
+
+// const admin = require("firebase-admin");
+// const serviceAccount = require("./firebase-admin-token.json");
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+// });
+
+// // ✅ Middleware to verify token
+// const verifyFirebaseToken = async (req, res, next) => {
+//   const authHeader = req.headers?.authorization;
+
+//   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+//     return res
+//       .status(401)
+//       .send({ message: "Unauthorized access: Missing or malformed token" });
+//   }
+
+//   const token = authHeader.split(" ")[1];
+
+//   try {
+//     const decoded = await admin.auth().verifyIdToken(token);
+//     req.tokenEmail = decoded.email;
+//     next();
+//   } catch (error) {
+//     console.error("Token verification failed:", error);
+//     return res.status(401).send({ message: "Unauthorized: Invalid token" });
+//   }
+// };
 
 // mongodb connect-------------------
 
@@ -75,6 +97,19 @@ async function run() {
       .db("foodSharing")
       .collection("requestedFoods");
     // ----------------
+    // jwt token related apis
+    app.post("/jwt", async (req, res) => {
+      const userData = req.body;
+      const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
+        expiresIn: "1h",
+      });
+      // set token in the cookies
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: false,
+      });
+      res.send({ Success: true });
+    });
 
     // --------users info-----
     //  --------user get data
@@ -114,6 +149,7 @@ async function run() {
     // ------------------slider end-----------------
     // ------------------foods data ----------------
     app.get("/foods", async (req, res) => {
+      console.log(req.cookies);
       const result = await foods.find().toArray();
       res.send(result);
     });
