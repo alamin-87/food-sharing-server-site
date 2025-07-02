@@ -114,11 +114,11 @@ async function run() {
     // --------users info-----
     //  --------user get data
     app.get("/users", async (req, res) => {
-      const email = req.query.email;
-      if (!email) {
-        const result = await userCollection.find().toArray();
-        return res.send(result);
-      }
+      // const email = req.query.email;
+      // if (!email) {
+      //   const result = await userCollection.find().toArray();
+      //   return res.send(result);
+      // }
       const result = await userCollection.find().toArray();
       res.send(result);
     });
